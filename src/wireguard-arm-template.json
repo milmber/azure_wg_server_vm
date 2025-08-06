@@ -243,7 +243,7 @@
                 "asyncExecution": false,
                 "runAsUser": "wg",
                 "source": {
-                    "scriptUri": "https://raw.githubusercontent.com/milmber/wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
+                    "scriptUri": "https://raw.githubusercontent.com/milmber/azure_wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
                 },
                 "treatFailureAsDeploymentFailure": true
             },
