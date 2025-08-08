@@ -1,78 +1,7 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "Deployment_Region_WG": {
-            "defaultValue": "eastus",
-            "type": "string",
-            "allowedValues": [
-                "asia",
-                "asiapacific",
-                "australia",
-                "australiacentral",
-                "australiacentral2",
-                "australiaeast",
-                "australiasoutheast",
-                "brazil",
-                "brazilsouth",
-                "brazilsoutheast",
-                "canada",
-                "canadacentral",
-                "canadaeast",
-                "centralindia",
-                "centralus",
-                "centraluseuap",
-                "centralusstage",
-                "eastasia",
-                "eastasiastage",
-                "eastus",
-                "eastus2",
-                "eastus2euap",
-                "eastus2stage",
-                "eastusstage",
-                "europe",
-                "francecentral",
-                "francesouth",
-                "germanynorth",
-                "germanywestcentral",
-                "global",
-                "india",
-                "japan",
-                "japaneast",
-                "japanwest",
-                "koreacentral",
-                "koreasouth",
-                "northcentralus",
-                "northcentralusstage",
-                "northeurope",
-                "norwayeast",
-                "norwaywest",
-                "polandcentral",
-                "southafricanorth",
-                "southafricawest",
-                "southcentralus",
-                "southcentralusstage",
-                "southeastasia",
-                "southeastasiastage",
-                "southindia",
-                "switzerlandnorth",
-                "switzerlandwest",
-                "uaecentral",
-                "uaenorth",
-                "uk",
-                "uksouth",
-                "ukwest",
-                "unitedstates",
-                "westcentralus",
-                "westeurope",
-                "westindia",
-                "westus",
-                "westus2",
-                "westus2stage",
-                "westus3",
-                "westusstage"
-            ]
-        },
         "Deployment_SSH_PublicKey": {
             "defaultValue": "PASTE KEY HERE",
             "type": "string"
@@ -83,18 +12,19 @@
         }
     },
     "variables": {
-        "virtualNetworks_wg_name": "wg-vpn-vnet",
-        "virtualMachines_wg_name": "wg-virtm",
-        "networkInterfaces_wg_name": "wg-region-iface",
-        "publicIPAddresses_wg_name": "wg-region-ip",
-        "networkSecurityGroups_wg_name": "wg-region-nsg"
+        "unique_resource_name" : "[uniqueString(subscription().subscriptionId)]",
+        "virtualNetworks_wg_name": "[concat('wg-vpn-vnet-', variables('unique_resource_name'))]",
+        "virtualMachines_wg_name": "[concat('wg-vm-', variables('unique_resource_name'))]",
+        "networkInterfaces_wg_name": "[concat('wg-region-iface-', variables('unique_resource_name'))]",
+        "publicIPAddresses_wg_name": "[concat('wg-region-ip-', variables('unique_resource_name'))]",
+        "networkSecurityGroups_wg_name": "[concat('wg-region-nsg-', variables('unique_resource_name'))]"
     },
     "resources": [
         {
             "type": "Microsoft.Network/networkSecurityGroups",
             "apiVersion": "2020-05-01",
             "name": "[variables('networkSecurityGroups_wg_name')]",
-            "location": "[parameters('Deployment_Region_WG')]",
+            "location": "[resourceGroup().location]",
             "properties": {
                 "securityRules": [
                     {
@@ -138,7 +68,7 @@
             "type": "Microsoft.Network/publicIPAddresses",
             "apiVersion": "2020-05-01",
             "name": "[variables('publicIPAddresses_wg_name')]",
-            "location": "[parameters('Deployment_Region_WG')]",
+            "location": "[resourceGroup().location]",
             "sku": {
                 "name": "Standard"
             },
@@ -154,7 +84,7 @@
             "type": "Microsoft.Network/virtualNetworks",
             "apiVersion": "2020-05-01",
             "name": "[variables('virtualNetworks_wg_name')]",
-            "location": "[parameters('Deployment_Region_WG')]",
+            "location": "[resourceGroup().location]",
             "properties": {
                 "addressSpace": {
                     "addressPrefixes": [
@@ -178,9 +108,9 @@
         },
         {
             "type": "Microsoft.Compute/virtualMachines",
-            "apiVersion": "2019-07-01",
+            "apiVersion": "2024-11-01",
             "name": "[variables('virtualMachines_wg_name')]",
-            "location": "[parameters('Deployment_Region_WG')]",
+            "location": "[resourceGroup().location]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaces_wg_name'))]"
             ],
@@ -235,25 +165,8 @@
             }
         },
         {
-            "type": "Microsoft.Compute/virtualMachines/runCommands",
-            "apiVersion": "2024-11-01",
-            "name": "[variables('virtualMachines_wg_name')]",
-            "location": "[parameters('Deployment_Region_WG')]",
-            "properties": {
-                "asyncExecution": false,
-                "runAsUser": "wg",
-                "source": {
-                    "scriptUri": "https://raw.githubusercontent.com/milmber/azure_wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
-                },
-                "treatFailureAsDeploymentFailure": true
-            },
-            "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachines_wg_name'))]"
-            ]
-        },
-        {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
-            "apiVersion": "2020-05-01",
+            "apiVersion": "2024-07-01",
             "name": "[concat(variables('networkSecurityGroups_wg_name'), '/51820')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
@@ -275,7 +188,7 @@
         },
         {
             "type": "Microsoft.Network/networkSecurityGroups/securityRules",
-            "apiVersion": "2020-05-01",
+            "apiVersion": "2024-07-01",
             "name": "[concat(variables('networkSecurityGroups_wg_name'), '/SSH')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
@@ -297,7 +210,7 @@
         },
         {
             "type": "Microsoft.Network/virtualNetworks/subnets",
-            "apiVersion": "2020-05-01",
+            "apiVersion": "2024-07-01",
             "name": "[concat(variables('virtualNetworks_wg_name'), '/default')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworks_wg_name'))]"
@@ -311,9 +224,9 @@
         },
         {
             "type": "Microsoft.Network/networkInterfaces",
-            "apiVersion": "2020-05-01",
+            "apiVersion": "2024-07-01",
             "name": "[variables('networkInterfaces_wg_name')]",
-            "location": "[parameters('Deployment_Region_WG')]",
+            "location": "[resourceGroup().location]",
             "dependsOn": [
                 "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))]",
                 "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworks_wg_name'), 'default')]",
@@ -345,6 +258,22 @@
                 "networkSecurityGroup": {
                     "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
                 }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/runCommands",
+            "apiVersion": "2024-11-01",
+            "name": "[concat(variables('virtualMachines_wg_name'), '/setupWireGuard.sh')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachines_wg_name'))]"
+            ],
+            "properties": {
+                "asyncExecution": false,
+                "source": {
+                    "scriptUri": "https://raw.githubusercontent.com/milmber/azure_wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
+                },
+                "treatFailureAsDeploymentFailure": true
             }
         }
     ],

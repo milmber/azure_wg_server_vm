@@ -1,16 +1,18 @@
 #!/bin/bash
 
-sudo apt-get update -y
+apt-get update -y
 
+## IP Forwarding
 # Forward IPv4
-sudo sysctl 'net.ipv4.ip_forward'=1
+sed -i -e 's/#net.ipv4.ip_forward.*/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
 # Forward IPv6
-sudo sysctl 'net.ipv6.conf.all.forwarding'=1
+sed -i -e 's/#net.ipv6.conf.all.forwarding.*/net.ipv6.conf.all.forwarding=1/g' /etc/sysctl.conf
+sysctl -p
 # Reload Configuration
-sudo sysctl -p
+sysctl -p
 
 # Install WireGuard
-sudo apt-get install wireguard -y
+apt-get install wireguard -y
 
 # Generate WireGuard Service Private and Public Keys
 wg genkey | tee /home/wg/serverPrivateKey | wg pubkey > /home/wg/serverPublicKey
@@ -24,12 +26,12 @@ WG_SERVER_PUBLIC_KEY=$(</home/wg/serverPublicKey)
 WG_SERVER_IP=$(curl ipinfo.io/ip)
 
 # Put key material somewhere safe
-sudo mkdir /etc/wireguard/serverKeyMat
-sudo chmod -R 755 /etc/wireguard/serverKeyMat
-sudo chown -R root.root /etc/wireguard/serverKeyMat
-sudo mv serverPrivateKey /etc/wireguard/serverKeyMat/
-sudo mv serverPublicKey /etc/wireguard/serverKeyMat/
-sudo mv clientPrivateKey /etc/wireguard/serverKeyMat/
+mkdir /etc/wireguard/serverKeyMat
+chmod -R 755 /etc/wireguard/serverKeyMat
+chown -R root.root /etc/wireguard/serverKeyMat
+mv /home/wg/serverPrivateKey /etc/wireguard/serverKeyMat/
+mv /home/wg/serverPublicKey /etc/wireguard/serverKeyMat/
+mv /home/wg/clientPrivateKey /etc/wireguard/serverKeyMat/
 
 cat > /home/wg/wg0.conf << EOF
 [Interface]
@@ -48,17 +50,17 @@ PersistentKeepalive = 15
 
 EOF
 
-sudo mv /home/wg/wg0.conf /etc/wireguard/
+mv /home/wg/wg0.conf /etc/wireguard/
 
 ## Firewall
-sudo ufw allow 51820/udp
-sudo ufw allow OpenSSH
-sudo ufw disable
-sudo ufw enable
+ufw allow 51820/udp
+ufw allow OpenSSH
+ufw disable
+ufw enable
 
 ## WireGuard Service
 wg-quick up wg0
-sudo systemctl enable wg-quick@wg0
+systemctl enable wg-quick@wg0
 
 # Create client configuration
 cat > /home/wg/client.conf << EOF
@@ -79,5 +81,5 @@ PersistentKeepalive = 15
 EOF
 
 ## Display QR Code
-sudo apt-get install qrencode
+apt-get install qrencode
 qrencode -t ansiutf8 < /home/wg/client.conf
