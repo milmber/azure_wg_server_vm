@@ -10,7 +10,7 @@
             }
         },
         "Deployment_Source_IP": {
-            "defaultValue": "PASTE LOCAL IP HERE",
+            "defaultValue": "PASTE IP ADDRESS HERE",
             "type": "string",
             "metadata": {
                 "description": "IP Address from which restrict access to the VM."
@@ -21,7 +21,7 @@
         "unique_resource_name" : "[uniqueString(subscription().subscriptionId)]",
         "virtualNetworks_wg_name": "[concat('wg-vm-vnet-', variables('unique_resource_name'))]",
         "virtualMachines_wg_name": "[concat('wg-vm-', resourceGroup().location, '-', variables('unique_resource_name'))]",
-        "virtualMachinesDisk_wg_name": "[concat('wg-vm--', resourceGroup().location, '-disk-', variables('unique_resource_name'))]",
+        "virtualMachinesDisk_wg_name": "[concat('wg-vm-', resourceGroup().location, '-disk-', variables('unique_resource_name'))]",
         "networkInterfaces_wg_name": "[concat('wg-vm-iface-', variables('unique_resource_name'))]",
         "publicIPAddresses_wg_name": "[concat('wg-vm-ip-', variables('unique_resource_name'))]",
         "networkSecurityGroups_wg_name": "[concat('wg-vm-nsg-', variables('unique_resource_name'))]"
@@ -280,6 +280,7 @@
                 "source": {
                     "scriptUri": "https://raw.githubusercontent.com/milmber/azure_wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
                 },
+                "timeoutInSeconds" : 300,
                 "treatFailureAsDeploymentFailure": true
             }
         }

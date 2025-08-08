@@ -2,6 +2,12 @@
 
 apt-get update -y
 
+# Configure unattended updates for security patches, etc
+unattended-upgrades --verbose
+
+# Install any pending updates
+apt-get upgrade -y
+
 ## IP Forwarding
 # Forward IPv4
 sed -i -e 's/#net.ipv4.ip_forward.*/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
@@ -82,3 +88,7 @@ EOF
 ## Display QR Code
 apt-get install qrencode -y
 qrencode -t ansiutf8 < /home/wg/client.conf
+
+# Clean up apt packages, etc
+apt-get autoremove -y
+apt-get clean
