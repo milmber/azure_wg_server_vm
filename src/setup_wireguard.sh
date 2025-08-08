@@ -81,5 +81,5 @@ PersistentKeepalive = 15
 EOF
 
 ## Display QR Code
-apt-get install qrencode
+apt-get install qrencode -y
 qrencode -t ansiutf8 < /home/wg/client.conf
