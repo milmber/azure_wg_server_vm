@@ -4,20 +4,27 @@
     "parameters": {
         "Deployment_SSH_PublicKey": {
             "defaultValue": "PASTE KEY HERE",
-            "type": "string"
+            "type": "string",
+            "metadata": {
+                "description": "SSH Public Key for VM access."
+            }
         },
         "Deployment_Source_IP": {
             "defaultValue": "PASTE LOCAL IP HERE",
-            "type": "string"
+            "type": "string",
+            "metadata": {
+                "description": "IP Address from which restrict access to the VM."
+            }
         }
     },
     "variables": {
         "unique_resource_name" : "[uniqueString(subscription().subscriptionId)]",
-        "virtualNetworks_wg_name": "[concat('wg-vpn-vnet-', variables('unique_resource_name'))]",
-        "virtualMachines_wg_name": "[concat('wg-vm-', variables('unique_resource_name'))]",
-        "networkInterfaces_wg_name": "[concat('wg-region-iface-', variables('unique_resource_name'))]",
-        "publicIPAddresses_wg_name": "[concat('wg-region-ip-', variables('unique_resource_name'))]",
-        "networkSecurityGroups_wg_name": "[concat('wg-region-nsg-', variables('unique_resource_name'))]"
+        "virtualNetworks_wg_name": "[concat('wg-vm-vnet-', variables('unique_resource_name'))]",
+        "virtualMachines_wg_name": "[concat('wg-vm-', resourceGroup().location, '-', variables('unique_resource_name'))]",
+        "virtualMachinesDisk_wg_name": "[concat('wg-vm--', resourceGroup().location, '-disk-', variables('unique_resource_name'))]",
+        "networkInterfaces_wg_name": "[concat('wg-vm-iface-', variables('unique_resource_name'))]",
+        "publicIPAddresses_wg_name": "[concat('wg-vm-ip-', variables('unique_resource_name'))]",
+        "networkSecurityGroups_wg_name": "[concat('wg-vm-nsg-', variables('unique_resource_name'))]"
     },
     "resources": [
         {
@@ -127,7 +134,7 @@
                     },
                     "osDisk": {
                         "osType": "Linux",
-                        "name": "[concat(variables('virtualMachines_wg_name'), '_disk1_7bb0a0b03dc446ff8f40a3434049b2bf')]",
+                        "name": "[variables('virtualMachinesDisk_wg_name')]",
                         "createOption": "FromImage",
                         "caching": "ReadWrite",
                         "managedDisk": {

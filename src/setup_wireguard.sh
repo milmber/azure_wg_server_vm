@@ -7,7 +7,6 @@ apt-get update -y
 sed -i -e 's/#net.ipv4.ip_forward.*/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
 # Forward IPv6
 sed -i -e 's/#net.ipv6.conf.all.forwarding.*/net.ipv6.conf.all.forwarding=1/g' /etc/sysctl.conf
-sysctl -p
 # Reload Configuration
 sysctl -p
 
