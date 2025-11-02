@@ -1,370 +1,387 @@
 {
-    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
-    "contentVersion": "1.1.0.0",
-    "parameters": {
-        "Deployment_SSH_PublicKey": {
-            "defaultValue": "",
-            "type": "string",
-            "metadata": {
-                "description": "SSH Public Key for VM access."
-            }
-        },
-        "Deployment_Source_IP": {
-            "defaultValue": "",
-            "type": "string",
-            "metadata": {
-                "description": "IP Address from which restrict access to the VM."
-            }
-        }
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.1.0.0",
+  "parameters": {
+    "Deployment_SSH_PublicKey": {
+      "defaultValue": "",
+      "type": "string",
+      "metadata": {
+        "description": "SSH Public Key for VM access."
+      }
     },
-    "variables": {
-        "unique_resource_name" : "[uniqueString(subscription().subscriptionId)]",
-        "virtualNetworks_wg_name": "[concat('wg-vm-vnet-', variables('unique_resource_name'))]",
-        "virtualMachines_wg_name": "[concat('wg-vm-', resourceGroup().location, '-', variables('unique_resource_name'))]",
-        "virtualMachinesDisk_wg_name": "[concat('wg-vm-', resourceGroup().location, '-disk-', variables('unique_resource_name'))]",
-        "networkInterfaces_wg_name": "[concat('wg-vm-iface-', variables('unique_resource_name'))]",
-        "publicIPAddresses_wg_name": "[concat('wg-vm-ip-', variables('unique_resource_name'))]",
-        "networkSecurityGroups_wg_name": "[concat('wg-vm-nsg-', variables('unique_resource_name'))]"
-    },
-    "resources": [
-        {
-            "type": "Microsoft.Network/networkSecurityGroups",
-            "apiVersion": "2020-05-01",
-            "name": "[variables('networkSecurityGroups_wg_name')]",
-            "location": "[resourceGroup().location]",
-            "properties": {
-                "securityRules": [
-                    {
-                        "name": "SSH",
-                        "properties": {
-                            "protocol": "TCP",
-                            "sourcePortRange": "*",
-                            "destinationPortRange": "22",
-                            "sourceAddressPrefix": "[parameters('Deployment_Source_IP')]",
-                            "destinationAddressPrefix": "*",
-                            "access": "Allow",
-                            "priority": 300,
-                            "direction": "Inbound",
-                            "sourcePortRanges": [],
-                            "destinationPortRanges": [],
-                            "sourceAddressPrefixes": [],
-                            "destinationAddressPrefixes": []
-                        }
-                    },
-                    {
-                        "name": "51820",
-                        "properties": {
-                            "protocol": "UDP",
-                            "sourcePortRange": "*",
-                            "destinationPortRange": "51820",
-                            "sourceAddressPrefix": "[parameters('Deployment_Source_IP')]",
-                            "destinationAddressPrefix": "*",
-                            "access": "Allow",
-                            "priority": 310,
-                            "direction": "Inbound",
-                            "sourcePortRanges": [],
-                            "destinationPortRanges": [],
-                            "sourceAddressPrefixes": [],
-                            "destinationAddressPrefixes": []
-                        }
-                    }
-                ]
-            }
-        },
-        {
-            "type": "Microsoft.Network/publicIPAddresses",
-            "apiVersion": "2020-05-01",
-            "name": "[variables('publicIPAddresses_wg_name')]",
-            "location": "[resourceGroup().location]",
-            "sku": {
-                "name": "Standard"
-            },
-            "properties": {
-                "ipAddress": "",
-                "publicIPAddressVersion": "IPv4",
-                "publicIPAllocationMethod": "Static",
-                "idleTimeoutInMinutes": 4,
-                "ipTags": []
-            }
-        },
-        {
-            "type": "Microsoft.Network/virtualNetworks",
-            "apiVersion": "2020-05-01",
-            "name": "[variables('virtualNetworks_wg_name')]",
-            "location": "[resourceGroup().location]",
-            "properties": {
-                "addressSpace": {
-                    "addressPrefixes": [
-                        "10.0.0.0/24"
-                    ]
-                },
-                "subnets": [
-                    {
-                        "name": "default",
-                        "properties": {
-                            "addressPrefix": "10.0.0.0/24",
-                            "delegations": [],
-                            "privateEndpointNetworkPolicies": "Enabled",
-                            "privateLinkServiceNetworkPolicies": "Enabled"
-                        }
-                    }
-                ],
-                "virtualNetworkPeerings": [],
-                "enableDdosProtection": false
-            }
-        },
-        {
-            "type": "Microsoft.Compute/virtualMachines",
-            "apiVersion": "2024-11-01",
-            "name": "[variables('virtualMachines_wg_name')]",
-            "location": "[resourceGroup().location]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaces_wg_name'))]"
-            ],
-            "properties": {
-                "hardwareProfile": {
-                    "vmSize": "Standard_B1ms"
-                },
-                "storageProfile": {
-                    "imageReference": {
-                        "publisher": "Canonical",
-                        "offer": "UbuntuServer",
-                        "sku": "18.04-LTS",
-                        "version": "latest"
-                    },
-                    "osDisk": {
-                        "osType": "Linux",
-                        "name": "[variables('virtualMachinesDisk_wg_name')]",
-                        "createOption": "FromImage",
-                        "caching": "ReadWrite",
-                        "managedDisk": {
-                            "storageAccountType": "Premium_LRS"
-                        },
-                        "diskSizeGB": 30
-                    },
-                    "dataDisks": []
-                },
-                "osProfile": {
-                    "computerName": "[variables('virtualMachines_wg_name')]",
-                    "adminUsername": "wg",
-                    "linuxConfiguration": {
-                        "disablePasswordAuthentication": true,
-                        "ssh": {
-                            "publicKeys": [
-                                {
-                                    "path": "/home/wg/.ssh/authorized_keys",
-                                    "keyData": "[concat(parameters('Deployment_SSH_PublicKey'), '\r\n')]"
-                                }
-                            ]
-                        },
-                        "provisionVMAgent": true
-                    },
-                    "secrets": [],
-                    "allowExtensionOperations": true
-                },
-                "networkProfile": {
-                    "networkInterfaces": [
-                        {
-                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaces_wg_name'))]"
-                        }
-                    ]
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Network/networkSecurityGroups/securityRules",
-            "apiVersion": "2024-07-01",
-            "name": "[concat(variables('networkSecurityGroups_wg_name'), '/51820')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
-            ],
-            "properties": {
-                "protocol": "UDP",
-                "sourcePortRange": "*",
-                "destinationPortRange": "51820",
-                "sourceAddressPrefix": "[parameters('Deployment_Source_IP')]",
-                "destinationAddressPrefix": "*",
-                "access": "Allow",
-                "priority": 310,
-                "direction": "Inbound",
-                "sourcePortRanges": [],
-                "destinationPortRanges": [],
-                "sourceAddressPrefixes": [],
-                "destinationAddressPrefixes": []
-            }
-        },
-        {
-            "type": "Microsoft.Network/networkSecurityGroups/securityRules",
-            "apiVersion": "2024-07-01",
-            "name": "[concat(variables('networkSecurityGroups_wg_name'), '/SSH')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
-            ],
-            "properties": {
-                "protocol": "TCP",
-                "sourcePortRange": "*",
-                "destinationPortRange": "22",
-                "sourceAddressPrefix": "[parameters('Deployment_Source_IP')]",
-                "destinationAddressPrefix": "*",
-                "access": "Allow",
-                "priority": 300,
-                "direction": "Inbound",
-                "sourcePortRanges": [],
-                "destinationPortRanges": [],
-                "sourceAddressPrefixes": [],
-                "destinationAddressPrefixes": []
-            }
-        },
-        {
-            "type": "Microsoft.Network/virtualNetworks/subnets",
-            "apiVersion": "2024-07-01",
-            "name": "[concat(variables('virtualNetworks_wg_name'), '/default')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworks_wg_name'))]"
-            ],
-            "properties": {
-                "addressPrefix": "10.0.0.0/24",
-                "delegations": [],
-                "privateEndpointNetworkPolicies": "Enabled",
-                "privateLinkServiceNetworkPolicies": "Enabled"
-            }
-        },
-        {
-            "type": "Microsoft.Network/networkInterfaces",
-            "apiVersion": "2024-07-01",
-            "name": "[variables('networkInterfaces_wg_name')]",
-            "location": "[resourceGroup().location]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))]",
-                "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworks_wg_name'), 'default')]",
-                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
-            ],
-            "properties": {
-                "ipConfigurations": [
-                    {
-                        "name": "ipconfig1",
-                        "properties": {
-                            "privateIPAddress": "10.0.0.4",
-                            "privateIPAllocationMethod": "Dynamic",
-                            "publicIPAddress": {
-                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))]"
-                            },
-                            "subnet": {
-                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworks_wg_name'), 'default')]"
-                            },
-                            "primary": true,
-                            "privateIPAddressVersion": "IPv4"
-                        }
-                    }
-                ],
-                "dnsSettings": {
-                    "dnsServers": []
-                },
-                "enableAcceleratedNetworking": false,
-                "enableIPForwarding": true,
-                "networkSecurityGroup": {
-                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
-                }
-            }
-        },
-        {
-          "type": "Microsoft.Compute/virtualMachines/runCommands",
-          "apiVersion": "2024-11-01",
-          "name": "[concat(variables('virtualMachines_wg_name'), '/updatePackages.sh')]",
-          "location": "[resourceGroup().location]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachines_wg_name'))]"
-          ],
-          "properties": {
-            "asyncExecution": false,
-            "source": {
-              "script": "bash -c 'set -e; apt-get update; apt-get install -y unattended-upgrades; unattended-upgrades --verbose || true; apt-get upgrade -y 2>&1'"
-            },
-            "timeoutInSeconds": 1800,
-            "treatFailureAsDeploymentFailure": true
-          }
-        },
-        {
-          "type": "Microsoft.Compute/virtualMachines/runCommands",
-          "apiVersion": "2024-11-01",
-          "name": "[concat(variables('virtualMachines_wg_name'), '/setupWireGuard.sh')]",
-          "location": "[resourceGroup().location]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'updatePackages.sh')]"
-          ],
-          "properties": {
-            "asyncExecution": false,
-            "source": {
-              "scriptUri": "https://raw.githubusercontent.com/milmber/azure_wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
-            },
-            "timeoutInSeconds": 300,
-            "treatFailureAsDeploymentFailure": true
-          }
-        },
-      {
-          "type": "Microsoft.Compute/virtualMachines/runCommands",
-          "apiVersion": "2024-11-01",
-          "name": "[concat(variables('virtualMachines_wg_name'), '/installQrencode')]",
-          "location": "[resourceGroup().location]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'setupWireGuard.sh')]"
-          ],
-          "properties": {
-            "asyncExecution": false,
-            "source": {
-              "script": "bash -c 'apt-get install qrencode -y 2>&1'"
-            },
-            "timeoutInSeconds": 600,
-            "treatFailureAsDeploymentFailure": true
-          }
-        },
-        {
-          "type": "Microsoft.Compute/virtualMachines/runCommands",
-          "apiVersion": "2024-11-01",
-          "name": "[concat(variables('virtualMachines_wg_name'), '/generateQR')]",
-          "location": "[resourceGroup().location]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'installQrencode')]"
-          ],
-          "properties": {
-            "asyncExecution": false,
-            "source": {
-              "script": "bash -c 'qrencode -t ansiutf8 < /home/wg/client.conf 2>&1'"
-            },
-            "timeoutInSeconds": 300,
-            "treatFailureAsDeploymentFailure": true
-          }
-        },
-        {
-          "type": "Microsoft.Compute/virtualMachines/runCommands",
-          "apiVersion": "2024-11-01",
-          "name": "[concat(variables('virtualMachines_wg_name'), '/cleanupPackages')]",
-          "location": "[resourceGroup().location]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR')]"
-          ],
-          "properties": {
-            "asyncExecution": false,
-            "source": {
-              "script": "bash -c 'apt-get autoremove -y; apt-get clean 2>&1'"
-            },
-            "timeoutInSeconds": 600,
-            "treatFailureAsDeploymentFailure": true
-          }
-        }
-    ],
-    "outputs": {
-        "wgServerUser": {
-            "type": "string",
-            "value": "wg"
-        },
-        "wgServerPublicIP": {
-            "type": "string",
-            "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))).IpAddress]"
-        },
-        "wireguardClientQRCode": {
-          "type": "string",
-          "value": "[reference(resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR'), '2024-11-01', 'Full').instanceView.statuses[1].message]"
-        }
+    "Deployment_Source_IP": {
+      "defaultValue": "",
+      "type": "string",
+      "metadata": {
+        "description": "IP Address from which restrict access to the VM."
+      }
     }
+  },
+  "variables": {
+    "unique_resource_name": "[uniqueString(subscription().subscriptionId)]",
+    "virtualNetworks_wg_name": "[concat('wg-vm-vnet-', variables('unique_resource_name'))]",
+    "virtualMachines_wg_name": "[concat('wg-vm-', resourceGroup().location, '-', variables('unique_resource_name'))]",
+    "virtualMachinesDisk_wg_name": "[concat('wg-vm-', resourceGroup().location, '-disk-', variables('unique_resource_name'))]",
+    "networkInterfaces_wg_name": "[concat('wg-vm-iface-', variables('unique_resource_name'))]",
+    "publicIPAddresses_wg_name": "[concat('wg-vm-ip-', variables('unique_resource_name'))]",
+    "networkSecurityGroups_wg_name": "[concat('wg-vm-nsg-', variables('unique_resource_name'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2020-05-01",
+      "name": "[variables('networkSecurityGroups_wg_name')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "SSH",
+            "properties": {
+              "protocol": "TCP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "[parameters('Deployment_Source_IP')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 300,
+              "direction": "Inbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          },
+          {
+            "name": "51820",
+            "properties": {
+              "protocol": "UDP",
+              "sourcePortRange": "*",
+              "destinationPortRange": "51820",
+              "sourceAddressPrefix": "[parameters('Deployment_Source_IP')]",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 310,
+              "direction": "Inbound",
+              "sourcePortRanges": [],
+              "destinationPortRanges": [],
+              "sourceAddressPrefixes": [],
+              "destinationAddressPrefixes": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2020-05-01",
+      "name": "[variables('publicIPAddresses_wg_name')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "ipAddress": "",
+        "publicIPAddressVersion": "IPv4",
+        "publicIPAllocationMethod": "Static",
+        "idleTimeoutInMinutes": 4,
+        "ipTags": []
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-05-01",
+      "name": "[variables('virtualNetworks_wg_name')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/24"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "default",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24",
+              "delegations": [],
+              "privateEndpointNetworkPolicies": "Enabled",
+              "privateLinkServiceNetworkPolicies": "Enabled"
+            }
+          }
+        ],
+        "virtualNetworkPeerings": [],
+        "enableDdosProtection": false
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2024-11-01",
+      "name": "[variables('virtualMachines_wg_name')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaces_wg_name'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_B1ms"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "UbuntuServer",
+            "sku": "18.04-LTS",
+            "version": "latest"
+          },
+          "osDisk": {
+            "osType": "Linux",
+            "name": "[variables('virtualMachinesDisk_wg_name')]",
+            "createOption": "FromImage",
+            "caching": "ReadWrite",
+            "managedDisk": {
+              "storageAccountType": "Premium_LRS"
+            },
+            "diskSizeGB": 30
+          },
+          "dataDisks": []
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachines_wg_name')]",
+          "adminUsername": "wg",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "/home/wg/.ssh/authorized_keys",
+                  "keyData": "[concat(parameters('Deployment_SSH_PublicKey'), '\r\n')]"
+                }
+              ]
+            },
+            "provisionVMAgent": true
+          },
+          "secrets": [],
+          "allowExtensionOperations": true
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaces_wg_name'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+      "apiVersion": "2024-07-01",
+      "name": "[concat(variables('networkSecurityGroups_wg_name'), '/51820')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
+      ],
+      "properties": {
+        "protocol": "UDP",
+        "sourcePortRange": "*",
+        "destinationPortRange": "51820",
+        "sourceAddressPrefix": "[parameters('Deployment_Source_IP')]",
+        "destinationAddressPrefix": "*",
+        "access": "Allow",
+        "priority": 310,
+        "direction": "Inbound",
+        "sourcePortRanges": [],
+        "destinationPortRanges": [],
+        "sourceAddressPrefixes": [],
+        "destinationAddressPrefixes": []
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+      "apiVersion": "2024-07-01",
+      "name": "[concat(variables('networkSecurityGroups_wg_name'), '/SSH')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
+      ],
+      "properties": {
+        "protocol": "TCP",
+        "sourcePortRange": "*",
+        "destinationPortRange": "22",
+        "sourceAddressPrefix": "[parameters('Deployment_Source_IP')]",
+        "destinationAddressPrefix": "*",
+        "access": "Allow",
+        "priority": 300,
+        "direction": "Inbound",
+        "sourcePortRanges": [],
+        "destinationPortRanges": [],
+        "sourceAddressPrefixes": [],
+        "destinationAddressPrefixes": []
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2024-07-01",
+      "name": "[concat(variables('virtualNetworks_wg_name'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworks_wg_name'))]"
+      ],
+      "properties": {
+        "addressPrefix": "10.0.0.0/24",
+        "delegations": [],
+        "privateEndpointNetworkPolicies": "Enabled",
+        "privateLinkServiceNetworkPolicies": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2024-07-01",
+      "name": "[variables('networkInterfaces_wg_name')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworks_wg_name'), 'default')]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAddress": "10.0.0.4",
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))]"
+              },
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworks_wg_name'), 'default')]"
+              },
+              "primary": true,
+              "privateIPAddressVersion": "IPv4"
+            }
+          }
+        ],
+        "dnsSettings": {
+          "dnsServers": []
+        },
+        "enableAcceleratedNetworking": false,
+        "enableIPForwarding": true,
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroups_wg_name'))]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/runCommands",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(variables('virtualMachines_wg_name'), '/updatePackages.sh')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachines_wg_name'))]"
+      ],
+      "properties": {
+        "asyncExecution": false,
+        "source": {
+          "script": "bash -c 'set -e; apt-get update; apt-get install -y unattended-upgrades; unattended-upgrades --verbose || true; apt-get upgrade -y 2>&1'"
+        },
+        "timeoutInSeconds": 1800,
+        "treatFailureAsDeploymentFailure": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/runCommands",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(variables('virtualMachines_wg_name'), '/enableIPForwarding')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'updatePackages.sh')]"
+      ],
+      "properties": {
+        "asyncExecution": false,
+        "source": {
+          "script": "bash -c 'set -e; printf \"net.ipv4.ip_forward=1\\nnet.ipv6.conf.all.forwarding=1\\n\" > /etc/sysctl.d/99-wg-forwarding.conf; sysctl --system 2>&1'"
+        },
+        "timeoutInSeconds": 300,
+        "treatFailureAsDeploymentFailure": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/runCommands",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(variables('virtualMachines_wg_name'), '/setupWireGuard.sh')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'enableIPForwarding')]"
+      ],
+      "properties": {
+        "asyncExecution": false,
+        "source": {
+          "scriptUri": "https://raw.githubusercontent.com/milmber/azure_wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
+        },
+        "timeoutInSeconds": 300,
+        "treatFailureAsDeploymentFailure": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/runCommands",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(variables('virtualMachines_wg_name'), '/installQrencode')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'setupWireGuard.sh')]"
+      ],
+      "properties": {
+        "asyncExecution": false,
+        "source": {
+          "script": "bash -c 'apt-get install qrencode -y 2>&1'"
+        },
+        "timeoutInSeconds": 600,
+        "treatFailureAsDeploymentFailure": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/runCommands",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(variables('virtualMachines_wg_name'), '/generateQR')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'installQrencode')]"
+      ],
+      "properties": {
+        "asyncExecution": false,
+        "source": {
+          "script": "bash -c 'qrencode -t ansiutf8 < /home/wg/client.conf 2>&1'"
+        },
+        "timeoutInSeconds": 300,
+        "treatFailureAsDeploymentFailure": true
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/runCommands",
+      "apiVersion": "2024-11-01",
+      "name": "[concat(variables('virtualMachines_wg_name'), '/cleanupPackages')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR')]"
+      ],
+      "properties": {
+        "asyncExecution": false,
+        "source": {
+          "script": "bash -c 'apt-get autoremove -y; apt-get clean 2>&1'"
+        },
+        "timeoutInSeconds": 600,
+        "treatFailureAsDeploymentFailure": true
+      }
+    }
+  ],
+  "outputs": {
+    "wgServerUser": {
+      "type": "string",
+      "value": "wg"
+    },
+    "wgServerPublicIP": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))).IpAddress]"
+    },
+    "wireguardClientQRCode": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR'), '2024-11-01', 'Full').instanceView.statuses[1].message]"
+    }
+  }
 }

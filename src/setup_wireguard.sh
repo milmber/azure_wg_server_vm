@@ -1,13 +1,5 @@
 #!/bin/bash
 
-## IP Forwarding
-# Forward IPv4
-sed -i -e 's/#net.ipv4.ip_forward.*/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-# Forward IPv6
-sed -i -e 's/#net.ipv6.conf.all.forwarding.*/net.ipv6.conf.all.forwarding=1/g' /etc/sysctl.conf
-# Reload Configuration
-sysctl -p
-
 # Install WireGuard
 apt-get install wireguard -y
 
