@@ -338,23 +338,6 @@
     {
       "type": "Microsoft.Compute/virtualMachines/runCommands",
       "apiVersion": "2024-11-01",
-      "name": "[concat(variables('virtualMachines_wg_name'), '/generateQR')]",
-      "location": "[resourceGroup().location]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'installQrencode')]"
-      ],
-      "properties": {
-        "asyncExecution": false,
-        "source": {
-          "script": "bash -c 'qrencode -t ansiutf8 < /home/wg/client.conf 2>&1'"
-        },
-        "timeoutInSeconds": 300,
-        "treatFailureAsDeploymentFailure": true
-      }
-    },
-    {
-      "type": "Microsoft.Compute/virtualMachines/runCommands",
-      "apiVersion": "2024-11-01",
       "name": "[concat(variables('virtualMachines_wg_name'), '/cleanupPackages')]",
       "location": "[resourceGroup().location]",
       "dependsOn": [
@@ -378,10 +361,6 @@
     "wgServerPublicIP": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))).IpAddress]"
-    },
-    "generateQRResourceId": {
-      "type": "string",
-      "value": "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR')]"
     }
   }
 }
