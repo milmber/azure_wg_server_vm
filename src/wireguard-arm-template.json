@@ -1,6 +1,6 @@
 {
     "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
-    "contentVersion": "1.0.0.0",
+    "contentVersion": "1.1.0.0",
     "parameters": {
         "Deployment_SSH_PublicKey": {
             "defaultValue": "",
@@ -285,23 +285,23 @@
           }
         },
         {
-            "type": "Microsoft.Compute/virtualMachines/runCommands",
-            "apiVersion": "2024-11-01",
-            "name": "[concat(variables('virtualMachines_wg_name'), '/setupWireGuard.sh')]",
-            "location": "[resourceGroup().location]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachines_wg_name'), 'updatePackages.sh')]"
-            ],
-            "properties": {
-                "asyncExecution": false,
-                "source": {
-                    "scriptUri": "https://raw.githubusercontent.com/milmber/azure_wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
-                },
-                "timeoutInSeconds" : 300,
-                "treatFailureAsDeploymentFailure": true
-            }
+          "type": "Microsoft.Compute/virtualMachines/runCommands",
+          "apiVersion": "2024-11-01",
+          "name": "[concat(variables('virtualMachines_wg_name'), '/setupWireGuard.sh')]",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'updatePackages.sh')]"
+          ],
+          "properties": {
+            "asyncExecution": false,
+            "source": {
+              "scriptUri": "https://raw.githubusercontent.com/milmber/azure_wg_server_vm/refs/heads/main/src/setup_wireguard.sh"
+            },
+            "timeoutInSeconds": 300,
+            "treatFailureAsDeploymentFailure": true
+          }
         },
-        {
+      {
           "type": "Microsoft.Compute/virtualMachines/runCommands",
           "apiVersion": "2024-11-01",
           "name": "[concat(variables('virtualMachines_wg_name'), '/installQrencode')]",
