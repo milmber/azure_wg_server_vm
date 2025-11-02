@@ -3,14 +3,14 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
         "Deployment_SSH_PublicKey": {
-            "defaultValue": "PASTE KEY HERE",
+            "defaultValue": "",
             "type": "string",
             "metadata": {
                 "description": "SSH Public Key for VM access."
             }
         },
         "Deployment_Source_IP": {
-            "defaultValue": "PASTE IP ADDRESS HERE",
+            "defaultValue": "",
             "type": "string",
             "metadata": {
                 "description": "IP Address from which restrict access to the VM."
@@ -268,12 +268,29 @@
             }
         },
         {
+          "type": "Microsoft.Compute/virtualMachines/runCommands",
+          "apiVersion": "2024-11-01",
+          "name": "[concat(variables('virtualMachines_wg_name'), '/updatePackages.sh')]",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachines_wg_name'))]"
+          ],
+          "properties": {
+            "asyncExecution": false,
+            "source": {
+              "script": "bash -c 'set -e; apt-get update; apt-get install -y unattended-upgrades; unattended-upgrades --verbose || true; apt-get upgrade -y 2>&1'"
+            },
+            "timeoutInSeconds": 1800,
+            "treatFailureAsDeploymentFailure": true
+          }
+        },
+        {
             "type": "Microsoft.Compute/virtualMachines/runCommands",
             "apiVersion": "2024-11-01",
             "name": "[concat(variables('virtualMachines_wg_name'), '/setupWireGuard.sh')]",
             "location": "[resourceGroup().location]",
             "dependsOn": [
-                "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachines_wg_name'))]"
+                "[resourceId('Microsoft.Compute/virtualMachines', variables('virtualMachines_wg_name'), 'updatePackages.sh')]"
             ],
             "properties": {
                 "asyncExecution": false,
@@ -283,6 +300,57 @@
                 "timeoutInSeconds" : 300,
                 "treatFailureAsDeploymentFailure": true
             }
+        },
+        {
+          "type": "Microsoft.Compute/virtualMachines/runCommands",
+          "apiVersion": "2024-11-01",
+          "name": "[concat(variables('virtualMachines_wg_name'), '/installQrencode')]",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'setupWireGuard.sh')]"
+          ],
+          "properties": {
+            "asyncExecution": false,
+            "source": {
+              "script": "bash -c 'apt-get install qrencode -y 2>&1'"
+            },
+            "timeoutInSeconds": 600,
+            "treatFailureAsDeploymentFailure": true
+          }
+        },
+        {
+          "type": "Microsoft.Compute/virtualMachines/runCommands",
+          "apiVersion": "2024-11-01",
+          "name": "[concat(variables('virtualMachines_wg_name'), '/generateQR')]",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'installQrencode')]"
+          ],
+          "properties": {
+            "asyncExecution": false,
+            "source": {
+              "script": "bash -c 'qrencode -t ansiutf8 < /home/wg/client.conf 2>&1'"
+            },
+            "timeoutInSeconds": 300,
+            "treatFailureAsDeploymentFailure": true
+          }
+        },
+        {
+          "type": "Microsoft.Compute/virtualMachines/runCommands",
+          "apiVersion": "2024-11-01",
+          "name": "[concat(variables('virtualMachines_wg_name'), '/cleanupPackages')]",
+          "location": "[resourceGroup().location]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR')]"
+          ],
+          "properties": {
+            "asyncExecution": false,
+            "source": {
+              "script": "bash -c 'apt-get autoremove -y; apt-get clean 2>&1'"
+            },
+            "timeoutInSeconds": 600,
+            "treatFailureAsDeploymentFailure": true
+          }
         }
     ],
     "outputs": {
@@ -293,6 +361,10 @@
         "wgServerPublicIP": {
             "type": "string",
             "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))).IpAddress]"
+        },
+        "wireguardClientQRCode": {
+          "type": "string",
+          "value": "[reference(resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR'), '2024-11-01', 'Full').instanceView.statuses[1].message]"
         }
     }
 }
