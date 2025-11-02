@@ -128,8 +128,8 @@
         "storageProfile": {
           "imageReference": {
             "publisher": "Canonical",
-            "offer": "UbuntuServer",
-            "sku": "18.04-LTS",
+            "offer": "ubuntu-24_04-lts",
+            "sku": "server",
             "version": "latest"
           },
           "osDisk": {
@@ -379,9 +379,9 @@
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddresses_wg_name'))).IpAddress]"
     },
-    "wireguardClientQRCode": {
+    "generateQRResourceId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR'), '2024-11-01', 'Full').instanceView.statuses[1].message]"
+      "value": "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR')]"
     }
   }
 }
