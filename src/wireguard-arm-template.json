@@ -341,7 +341,7 @@
       "name": "[concat(variables('virtualMachines_wg_name'), '/cleanupPackages')]",
       "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'generateQR')]"
+        "[resourceId('Microsoft.Compute/virtualMachines/runCommands', variables('virtualMachines_wg_name'), 'installQrencode')]"
       ],
       "properties": {
         "asyncExecution": false,
